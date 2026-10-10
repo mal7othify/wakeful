@@ -17,6 +17,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from .config import KeepAwakeConfig, default_config_path, load_config, save_config
+from .icon import ICON_PNG_BASE64
 from .keep_awake import MODES, MOUSE_MODE, NATIVE_MODE, KeepAwakeError, KeepAwakeService, create_backend
 
 log = logging.getLogger(__name__)
@@ -54,6 +55,7 @@ class KeepAwakeWindow:
         self.root = tk.Tk()
         self.root.title("Wakeful")
         self.root.resizable(False, False)
+        self._set_icon()
         self.root.protocol("WM_DELETE_WINDOW", self.shutdown)
         self.root.bind("<FocusIn>", self._on_focus_in)
         self.root.bind("<Activate>", self._on_focus_in)  # macOS/Windows app activation
@@ -80,6 +82,16 @@ class KeepAwakeWindow:
             self._show_error(self._service.unavailable_reason or "Keep Awake is unavailable.")
         elif cfg.enabled:
             self._apply(True)  # restore the previous state before the first paint
+
+    def _set_icon(self) -> None:
+        """Window / dock icon. Cosmetic, so any failure is logged and ignored."""
+        import tkinter as tk
+
+        try:
+            self._icon = tk.PhotoImage(data=ICON_PNG_BASE64)  # keep a reference or Tk drops the image
+            self.root.iconphoto(True, self._icon)
+        except Exception:  # noqa: BLE001 - e.g. a Tk build without PNG support
+            log.debug("could not set the window icon", exc_info=True)
 
     # -- behaviour ----------------------------------------------------------
 

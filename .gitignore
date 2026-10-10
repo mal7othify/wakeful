@@ -7,4 +7,7 @@ dist/
 *.egg-info/
 .pytest_cache/
 out/
+# intermediates of assets/make_icon.py
+assets/icon.iconset/
+assets/icon_128.png
 .DS_Store
