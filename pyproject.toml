@@ -1,0 +1,31 @@
+[project]
+name = "wakeful"
+version = "0.1.0"
+description = "Minimal cross-platform Keep Awake utility built on native OS power-management APIs."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Maryam Alhuthayfi", email = "mal7othify@gmail.com" }]
+dependencies = []
+
+[project.scripts]
+wakeful = "wakeful.app:main"
+
+[project.gui-scripts]
+wakeful-gui = "wakeful.app:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/wakeful"]
+
+[dependency-groups]
+# Only needed to produce a standalone executable; not a runtime dependency.
+build = ["pyinstaller>=6.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
