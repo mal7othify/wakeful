@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: Tests (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Run unit tests
+        run: uv run --python ${{ matrix.python }} python -W error::ResourceWarning -m unittest discover -s tests -v
+      - name: Lint
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12'
+        run: uv run --python 3.12 --with ruff ruff check --select E,F,W,I,B,UP --line-length 120 src tests

@@ -1,0 +1,77 @@
+name: Release
+
+# Tag a commit `vX.Y.Z` and push the tag; this builds the executables and
+# attaches them to a GitHub Release:
+#   wakeful-windows-x86_64.exe   (double-click; SmartScreen will warn once, it is unsigned)
+#   wakeful-macos-arm64.dmg      (Apple Silicon; unsigned, so right-click -> Open the first time)
+#   wakeful-linux-x86_64.tar.gz  (single binary, built on Ubuntu 22.04 for wide glibc compatibility)
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x86_64
+            os: ubuntu-22.04
+          - name: macos-arm64
+            os: macos-latest
+          - name: windows-x86_64
+            os: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Run unit tests
+        run: uv run --python 3.12 python -m unittest discover -s tests
+      - name: Install build tools
+        run: uv sync --python 3.12 --group build
+
+      - name: Build (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          uv run pyinstaller --paths src --onefile --name wakeful src/wakeful/__main__.py
+          tar -C dist -czf wakeful-linux-x86_64.tar.gz wakeful
+      - name: Build (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          uv run pyinstaller --paths src --windowed --name Wakeful --icon assets/icon.icns --osx-bundle-identifier io.github.mal7othify.wakeful src/wakeful/__main__.py
+          hdiutil create -volname Wakeful -srcfolder dist/Wakeful.app -ov -format UDZO wakeful-macos-arm64.dmg
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          uv run pyinstaller --paths src --onefile --windowed --name wakeful --icon assets/icon.ico src/wakeful/__main__.py
+          mv dist/wakeful.exe wakeful-windows-x86_64.exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wakeful-${{ matrix.name }}
+          path: |
+            wakeful-*.tar.gz
+            wakeful-*.dmg
+            wakeful-*.exe
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true
